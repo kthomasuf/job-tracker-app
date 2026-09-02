@@ -1,0 +1,36 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Application {
+  id          Int      @id @default(autoincrement())
+  company     String
+  role        String
+  location    String
+  lat         Float
+  lng         Float
+  status      String   @default("Applied")
+  dateApplied DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Freeform notes about a company, shown on its profile page. Keyed by
+// company name since there's no separate Company entity — Application.company
+// is just a plain string field.
+model CompanyNote {
+  id        Int      @id @default(autoincrement())
+  company   String   @unique
+  notes     String
+  updatedAt DateTime @updatedAt
+}

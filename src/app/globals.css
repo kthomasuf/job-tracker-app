@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  /* Neutrals — surfaces & lines */
+  --bg:              oklch(0.985 0.003 100);
+  --surface:         oklch(1 0 0);
+  --surface-subtle:  oklch(0.982 0.003 100);
+  --border:          oklch(0.91 0.005 100);
+  --border-input:    oklch(0.90 0.005 100);
+  --divider:         oklch(0.94 0.004 100);
+  --divider-soft:    oklch(0.93 0.004 100);
+  --line-row:        oklch(0.95 0.003 100);
+  --track:           oklch(0.95 0.003 100);
+  --track-alt:       oklch(0.93 0.004 100);
+
+  /* Text */
+  --text:            oklch(0.24 0.01 150);
+  --text-body:       oklch(0.36 0.01 150);
+  --text-label:      oklch(0.38 0.01 150);
+  --text-secondary:  oklch(0.45 0.01 150);
+  --text-tertiary:   oklch(0.52 0.01 150);
+  --text-muted:      oklch(0.55 0.01 150);
+  --text-eyebrow:    oklch(0.58 0.01 150);
+  --text-placeholder:oklch(0.65 0.01 150);
+  --text-on-accent:  oklch(0.98 0.005 165);
+
+  /* Accent — single green ramp, hue 162–168 */
+  --accent:          oklch(0.48 0.075 165);
+  --accent-strong:   oklch(0.36 0.08 162);
+  --accent-hover:    oklch(0.30 0.075 162);
+  --accent-wash:     oklch(0.96 0.008 165);
+  --accent-wash-alt: oklch(0.94 0.012 165);
+
+  /* Chart ramp — light to dark */
+  --ramp-1:          oklch(0.72 0.045 165);
+  --ramp-2:          oklch(0.62 0.06 168);
+  --ramp-3:          oklch(0.48 0.075 165);
+  --ramp-4:          oklch(0.42 0.08 163);
+  --ramp-5:          oklch(0.36 0.08 162);
+
+  /* Negative outcomes — warm hue 60 */
+  --reject:          oklch(0.79 0.014 60);
+  --reject-wash:     oklch(0.95 0.012 60);
+  --reject-text:     oklch(0.45 0.03 60);
+  --inert:           oklch(0.89 0.006 100);
+
+  /* Overlay */
+  --scrim:           oklch(0.24 0.01 150 / 0.32);
+  --shadow-modal:    0 24px 60px oklch(0.24 0.01 150 / 0.18);
+
+  /* Application status semantics, composed from the tokens above so the
+     pipeline ring, table pills, and map markers all agree on one meaning
+     per status. Progressive stages step through the chart ramp (light to
+     dark = shallow to deep in the pipeline) for clear mutual contrast;
+     Awaiting reuses the neutral "on hold" tone; Rejected keeps its own
+     reserved warm hue so a negative outcome never reads as "more progress". */
+  --status-applied:          var(--ramp-1);
+  --status-applied-wash:     var(--track);
+  --status-applied-text:     var(--text-muted);
+  --status-screening:        var(--ramp-2);
+  --status-screening-wash:   var(--accent-wash-alt);
+  --status-screening-text:   var(--accent);
+  --status-interviewing:       var(--ramp-3);
+  --status-interviewing-wash:  var(--accent-wash);
+  --status-interviewing-text:  var(--accent-strong);
+  --status-offer:            var(--ramp-5);
+  --status-offer-text:       var(--text-on-accent);
+  --status-awaiting:         var(--inert);
+  --status-awaiting-wash:    var(--track-alt);
+  --status-awaiting-text:    var(--text-secondary);
+  --status-rejected:         var(--reject);
+  --status-rejected-text:    var(--reject-text);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-roboto);
+}
+
+/* Bump every text size ~4px larger than Tailwind's defaults. */
+@theme {
+  --text-xs: 1rem;
+  --text-sm: 1.125rem;
+  --text-base: 1.25rem;
+  --text-lg: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2rem;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
