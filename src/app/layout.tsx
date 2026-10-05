@@ -1,28 +1,28 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
-import Sidebar from "@/components/Sidebar";
+import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const roboto = Roboto({
-  variable: "--font-roboto",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600"],
+});
+
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
   title: "Job Tracker",
-  description: "Track job applications and where they are in the world.",
+  description: "Track job applications as you work through the search process.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${roboto.variable} h-full antialiased`}>
-      <body className="flex h-dvh overflow-hidden">
-        <Sidebar />
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          {children}
-        </main>
-      </body>
+    <html lang="en" className={`${plexSans.variable} ${plexMono.variable} h-full`}>
+      <body className="h-full font-sans antialiased">{children}</body>
     </html>
   );
 }

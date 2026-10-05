@@ -45,3 +45,6 @@ next-env.d.ts
 # prisma sqlite database
 /prisma/*.db
 /prisma/*.db-journal
+
+# archived copy of the pre-rebuild app (local reference only, not published)
+/legacy-archive

@@ -1,225 +1,148 @@
-import { prisma } from "@/lib/prisma";
-import ApplicationsTable from "@/components/ApplicationsTable";
-import PipelineDiagram from "@/components/PipelineDiagram";
-import WeeklyMomentum, { type WeekBucket } from "@/components/WeeklyMomentum";
-import StillInPlay from "@/components/StillInPlay";
-import StageAging, { type StageAgingRow } from "@/components/StageAging";
-import {
-  APPLICATION_STATUSES,
-  type Application,
-  type ApplicationStatus,
-} from "@/lib/types";
+"use client";
 
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
-const STALL_THRESHOLD_DAYS = 14;
+import { useMemo, useState } from "react";
+import { useJobs } from "@/hooks/useJobs";
+import { AppHeader } from "@/components/AppHeader";
+import { FilterBar } from "@/components/FilterBar";
+import { ApplicationsTable } from "@/components/ApplicationsTable";
+import { JobDetailPanel } from "@/components/JobDetailPanel";
+import { JobFormModal } from "@/components/JobFormModal";
+import { STATUS_NAMES } from "@/lib/statuses";
+import { BLANK_FORM } from "@/lib/seed-data";
+import { today } from "@/lib/format";
+import type { JobFormData, Layout, SortKey, Status } from "@/lib/types";
 
-function daysSince(date: Date | string) {
-  return Math.floor((Date.now() - new Date(date).getTime()) / MS_PER_DAY);
-}
+export default function Home() {
+  const { jobs, addJob, editJob, removeJob, setStatus, setNotes } = useJobs();
 
-export const dynamic = "force-dynamic";
+  const [selId, setSelId] = useState<number | null>(1);
+  const [filter, setFilter] = useState<"All" | Status>("All");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("date");
+  const [dir, setDir] = useState<1 | -1>(-1);
+  const [layout, setLayout] = useState<Layout>("Split");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState<JobFormData>(BLANK_FORM);
 
-const CARD_BASE =
-  "rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm";
-const CARD = `${CARD_BASE} p-5`;
-const STAT_CARD = `${CARD_BASE} p-5`;
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return jobs
+      .filter((j) => filter === "All" || j.status === filter)
+      .filter((j) => !q || [j.company, j.role, j.location].join(" ").toLowerCase().includes(q))
+      .slice()
+      .sort((a, b) => {
+        const av = sort === "status" ? STATUS_NAMES.indexOf(a.status) : a[sort] || "";
+        const bv = sort === "status" ? STATUS_NAMES.indexOf(b.status) : b[sort] || "";
+        return (av > bv ? 1 : av < bv ? -1 : 0) * dir;
+      });
+  }, [jobs, filter, query, sort, dir]);
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const sel = jobs.find((j) => j.id === selId);
+  const drawer = layout === "Drawer";
+  const drawerOpen = drawer && !!sel;
 
-function startOfWeek(date: Date) {
-  const start = new Date(date);
-  const day = start.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() + mondayOffset);
-  return start;
-}
+  const handleSort = (key: SortKey) => {
+    setDir((d) => (sort === key ? ((-d) as 1 | -1) : 1));
+    setSort(key);
+  };
 
-function buildWeeklyMomentum(applications: Application[], weekCount = 8): WeekBucket[] {
-  const currentWeekStart = startOfWeek(new Date()).getTime();
+  const openAdd = () => {
+    setEditId(null);
+    setForm({ ...BLANK_FORM, date: today() });
+    setFormOpen(true);
+  };
 
-  const buckets = Array.from({ length: weekCount }, (_, i) => ({
-    start: currentWeekStart - (weekCount - 1 - i) * WEEK_MS,
-    sent: 0,
-    replies: 0,
-    interviews: 0,
-  }));
+  const openEdit = () => {
+    if (!sel) return;
+    setEditId(sel.id);
+    setForm({
+      company: sel.company,
+      role: sel.role,
+      location: sel.location,
+      workMode: sel.workMode,
+      status: sel.status,
+      date: sel.date,
+      salary: sel.salary,
+      link: sel.link,
+      description: sel.description,
+    });
+    setFormOpen(true);
+  };
 
-  for (const app of applications) {
-    const weekStart = startOfWeek(new Date(app.dateApplied)).getTime();
-    const bucket = buckets.find((b) => b.start === weekStart);
-    if (!bucket) continue;
-    bucket.sent += 1;
-    if (app.status !== "Applied") bucket.replies += 1;
-    if (app.status === "Interviewing" || app.status === "Offer" || app.status === "Awaiting")
-      bucket.interviews += 1;
-  }
+  const handleFormChange = <K extends keyof JobFormData>(field: K, value: JobFormData[K]) => {
+    setForm((f) => ({ ...f, [field]: value }));
+  };
 
-  return buckets.map((bucket, i) => ({
-    label:
-      i === buckets.length - 1
-        ? "This wk"
-        : new Date(bucket.start).toLocaleDateString(undefined, {
-            day: "numeric",
-            month: "short",
-          }),
-    sent: bucket.sent,
-    replies: bucket.replies,
-    interviews: bucket.interviews,
-  }));
-}
+  const handleSave = () => {
+    if (editId) {
+      const previous = jobs.find((j) => j.id === editId);
+      editJob(editId, form, previous?.location ?? "");
+    } else {
+      const id = addJob(form);
+      setSelId(id);
+    }
+    setFormOpen(false);
+  };
 
-type SearchParams = { searchParams: Promise<{ q?: string }> };
+  const handleDelete = () => {
+    if (!sel) return;
+    if (!confirm(`Delete ${sel.company}?`)) return;
+    const rest = jobs.filter((j) => j.id !== sel.id);
+    removeJob(sel.id);
+    setSelId(rest[0]?.id ?? null);
+  };
 
-export default async function DashboardPage({ searchParams }: SearchParams) {
-  const { q } = await searchParams;
+  const mainColsClass =
+    layout === "Split" ? "grid-cols-[repeat(auto-fit,minmax(min(100%,460px),1fr))]" : "grid-cols-1";
 
-  const applications = await prisma.application.findMany({
-    orderBy: { dateApplied: "desc" },
-  });
-
-  const query = (q ?? "").trim().toLowerCase();
-  const visibleApplications = query
-    ? applications.filter(
-        (a) =>
-          a.company.toLowerCase().includes(query) ||
-          a.role.toLowerCase().includes(query) ||
-          a.location.toLowerCase().includes(query),
-      )
-    : applications;
-
-  const total = applications.length;
-
-  const counts = Object.fromEntries(
-    APPLICATION_STATUSES.map((status) => [
-      status,
-      applications.filter((a) => a.status === status).length,
-    ]),
-  ) as Record<ApplicationStatus, number>;
-
-  const appliedOnly = counts.Applied;
-  const interviews = counts.Interviewing;
-  const offers = counts.Offer;
-  const rejections = counts.Rejected;
-  const responses = total - appliedOnly;
-
-  const responseRate = total > 0 ? Math.round((responses / total) * 100) : 0;
-  const rejectionShare = total > 0 ? Math.round((rejections / total) * 100) : 0;
-  const noResponseShare = total > 0 ? Math.round((appliedOnly / total) * 100) : 0;
-  const earliestDate = applications.at(-1)?.dateApplied;
-  const weeklyMomentum = buildWeeklyMomentum(applications);
-
-  const OPEN_STATUSES: ApplicationStatus[] = ["Applied", "Screening", "Interviewing", "Awaiting"];
-  const openApplications = applications.filter((a) =>
-    OPEN_STATUSES.includes(a.status as ApplicationStatus),
-  );
-  const closedCount = offers + rejections;
-
-  const STAGE_DEPTH: ApplicationStatus[] = ["Applied", "Screening", "Interviewing", "Awaiting", "Offer"];
-  const furthestStage = [...STAGE_DEPTH].reverse().reduce<{ label: string; count: number }>(
-    (found, status) => (found.count > 0 ? found : { label: status, count: counts[status] }),
-    { label: "—", count: 0 },
-  );
-
-  const oldestOpenDays =
-    openApplications.length > 0
-      ? Math.max(...openApplications.map((a) => daysSince(a.dateApplied)))
-      : null;
-
-  const STAGE_AGING_STATUSES: ApplicationStatus[] = [
-    "Applied",
-    "Screening",
-    "Interviewing",
-    "Offer",
-    "Awaiting",
-  ];
-  const stageAgingRows: StageAgingRow[] = STAGE_AGING_STATUSES.map(
-    (status): StageAgingRow | null => {
-      const inStage = applications.filter((a) => a.status === status);
-      if (inStage.length === 0) return null;
-      const avgDays = Math.round(
-        inStage.reduce((sum, a) => sum + daysSince(a.updatedAt), 0) / inStage.length,
-      );
-      return { label: status, days: avgDays, stalled: avgDays > STALL_THRESHOLD_DAYS };
-    },
-  ).filter((row): row is StageAgingRow => row !== null);
-
-  const nudgeCount = applications.filter(
-    (a) =>
-      OPEN_STATUSES.includes(a.status as ApplicationStatus) &&
-      daysSince(a.updatedAt) > STALL_THRESHOLD_DAYS,
-  ).length;
-
-  const stats = [
-    {
-      label: "Applications Sent",
-      value: total,
-      caption: earliestDate
-        ? `since ${new Date(earliestDate).toLocaleDateString()}`
-        : "no applications yet",
-    },
-    { label: "Interviews", value: interviews, caption: "in interview stage" },
-    { label: "Offers", value: offers, caption: "offers received" },
-    { label: "Rejections", value: rejections, caption: `${rejectionShare}% of total` },
-    { label: "No Response", value: appliedOnly, caption: `${noResponseShare}% of total` },
-    {
-      label: "Response Rate",
-      value: `${responseRate}%`,
-      caption: `${responses} of ${total} replied`,
-    },
-  ];
+  const asideClass =
+    drawer
+      ? `absolute top-0 right-0 bottom-0 z-5 w-[min(460px,100vw)] overflow-y-auto bg-[var(--surface)] shadow-[-12px_0_40px_rgba(0,0,0,0.12)] ${drawerOpen ? "block" : "hidden"}`
+      : layout === "Stacked"
+        ? "border-t border-[var(--border)] bg-[var(--surface)]"
+        : "sticky top-0 bg-[var(--surface)]";
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-[var(--text-secondary)]">
-          {total} application{total === 1 ? "" : "s"} tracked
-        </p>
-      </div>
+    <div className="flex min-h-screen flex-col">
+      <AppHeader total={jobs.length} layout={layout} onLayoutChange={setLayout} onAddClick={openAdd} />
+      <FilterBar jobs={jobs} filter={filter} onFilterChange={setFilter} query={query} onQueryChange={setQuery} />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className={STAT_CARD}>
-            <div className="text-xs uppercase tracking-wide text-[var(--text-eyebrow)]">
-              {stat.label}
-            </div>
-            <div className="mt-1 text-2xl font-semibold text-[var(--text)]">
-              {stat.value}
-            </div>
-            <div className="mt-1 text-xs text-[var(--text-muted)]">
-              {stat.caption}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_3fr] lg:items-stretch">
-        <div className={CARD}>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[var(--text)]">Pipeline by stage</h2>
-            <span className="text-xs text-[var(--text-muted)]">All time</span>
-          </div>
-          <PipelineDiagram total={total} counts={counts} />
-          <StillInPlay
-            open={openApplications.length}
-            closed={closedCount}
-            furthestStageLabel={furthestStage.label}
-            furthestStageCount={furthestStage.count}
-            oldestOpenDays={oldestOpenDays}
+      <main className={`relative grid flex-1 items-start ${mainColsClass}`}>
+        <div className={layout === "Split" ? "min-w-0 border-r border-[var(--border)]" : "min-w-0"}>
+          <ApplicationsTable
+            rows={visible}
+            sort={sort}
+            dir={dir}
+            onSort={handleSort}
+            selId={selId}
+            onSelect={setSelId}
           />
         </div>
 
-        <div className={CARD}>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[var(--text)]">Weekly momentum</h2>
-          </div>
-          <WeeklyMomentum weeks={weeklyMomentum} />
-          <StageAging rows={stageAgingRows} nudgeCount={nudgeCount} />
-        </div>
-      </div>
+        <aside className={asideClass}>
+          <JobDetailPanel
+            job={sel}
+            drawer={drawer}
+            showMap
+            onClose={() => setSelId(null)}
+            onEdit={openEdit}
+            onDelete={handleDelete}
+            onStatusChange={(status) => sel && setStatus(sel, status)}
+            onNotesChange={(notes) => sel && setNotes(sel.id, notes)}
+          />
+        </aside>
+      </main>
 
-      <ApplicationsTable applications={visibleApplications} />
+      <JobFormModal
+        open={formOpen}
+        title={editId ? "Edit job" : "Add job"}
+        saveLabel={editId ? "Save changes" : "Add job"}
+        form={form}
+        onChange={handleFormChange}
+        onSubmit={handleSave}
+        onClose={() => setFormOpen(false)}
+      />
     </div>
   );
 }
