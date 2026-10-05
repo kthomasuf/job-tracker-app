@@ -13,7 +13,7 @@ import { today } from "@/lib/format";
 import type { JobFormData, Layout, SortKey, Status } from "@/lib/types";
 
 export default function Home() {
-  const { jobs, addJob, editJob, removeJob, setStatus, setNotes } = useJobs();
+  const { jobs, loaded, addJob, editJob, removeJob, setStatus, setNotes } = useJobs();
 
   const [selId, setSelId] = useState<number | null>(1);
   const [filter, setFilter] = useState<"All" | Status>("All");
@@ -102,6 +102,13 @@ export default function Home() {
       : layout === "Stacked"
         ? "border-t border-[var(--border)] bg-[var(--surface)]"
         : "sticky top-0 bg-[var(--surface)]";
+
+  if (!loaded) {
+    // Matches what the static export prerenders, so hydration has nothing
+    // to reconcile — the real UI (seed data or your saved jobs) appears
+    // in one shot once storage has been read, with no in-between flash.
+    return <div className="min-h-screen" />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col">

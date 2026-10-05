@@ -17,19 +17,28 @@ function persist(jobs: Job[]) {
 
 export function useJobs() {
   const [jobs, setJobs] = useState<Job[]>(SEED_JOBS);
+  // Starts false on both the prerendered HTML and the client's first paint,
+  // so nothing renders off this data until the real (localStorage-backed)
+  // value is known — avoids a flash of seed/stale jobs before storage loads.
+  const [loaded, setLoaded] = useState(false);
 
   // Reads a browser-only API, so it must run after mount rather than during
   // the initial (server-prerendered) render — hence the one-time effect
   // instead of a lazy useState initializer.
   useEffect(() => {
+    let next = SEED_JOBS;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const stored = raw ? (JSON.parse(raw) as Job[]) : null;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (stored && stored.length) setJobs(stored);
+      if (stored && stored.length) next = stored;
     } catch {
-      // ignore corrupt storage
+      // ignore corrupt storage, fall back to seed data
     }
+    // Batched by React into a single re-render, so consumers never see
+    // loaded=true paired with the old (seed) jobs.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setJobs(next);
+    setLoaded(true);
   }, []);
 
   const updateJob = useCallback((id: number, patch: Partial<Job>) => {
@@ -107,5 +116,5 @@ export function useJobs() {
     [updateJob],
   );
 
-  return { jobs, addJob, editJob, removeJob, setStatus, setNotes };
+  return { jobs, loaded, addJob, editJob, removeJob, setStatus, setNotes };
 }
