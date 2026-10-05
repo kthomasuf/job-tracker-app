@@ -55,5 +55,4 @@ body {
   color: var(--foreground);
   /* Scale the whole UI up — simplest way to enlarge every component
      and font size uniformly without rewriting every arbitrary px value. */
-  zoom: 1.25;
 }
