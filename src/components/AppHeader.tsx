@@ -1,5 +1,6 @@
 "use client";
 
+import { signOutAction } from "@/lib/actions/auth";
 import type { Layout } from "@/lib/types";
 
 const LAYOUTS: Layout[] = ["Split", "Stacked", "Drawer"];
@@ -9,9 +10,10 @@ interface AppHeaderProps {
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
   onAddClick: () => void;
+  userEmail?: string | null;
 }
 
-export function AppHeader({ total, layout, onLayoutChange, onAddClick }: AppHeaderProps) {
+export function AppHeader({ total, layout, onLayoutChange, onAddClick, userEmail }: AppHeaderProps) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-6 py-4">
       <div className="flex items-baseline gap-3">
@@ -42,6 +44,19 @@ export function AppHeader({ total, layout, onLayoutChange, onAddClick }: AppHead
         >
           + Add job
         </button>
+        {userEmail && (
+          <div className="flex items-center gap-2 border-l border-[var(--border-strong)] pl-3 text-[13px] text-[var(--muted)]">
+            <span className="max-w-[160px] truncate">{userEmail}</span>
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="cursor-pointer rounded-md border border-[var(--border-strong)] bg-white px-2.5 py-1.5 text-[13px] hover:bg-[#f1efea]"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </header>
   );

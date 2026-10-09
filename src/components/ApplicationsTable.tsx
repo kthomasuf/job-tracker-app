@@ -17,8 +17,8 @@ interface ApplicationsTableProps {
   sort: SortKey;
   dir: 1 | -1;
   onSort: (key: SortKey) => void;
-  selId: number | null;
-  onSelect: (id: number) => void;
+  selId: string | null;
+  onSelect: (id: string) => void;
 }
 
 export function ApplicationsTable({ rows, sort, dir, onSort, selId, onSelect }: ApplicationsTableProps) {

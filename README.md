@@ -1,10 +1,14 @@
 # Job Tracker
 
-A simple job application tracker: add jobs, move them through a pipeline of
-stages, and keep notes as you work through the search.
+A simple job application tracker: sign in with Google, add jobs, move them
+through a pipeline of stages, and keep notes as you work through the search.
+Your data is tied to your account, so it's available from any device/browser
+you sign into.
 
 ## Features
 
+- **Google sign-in** — your account is created automatically on first sign-in;
+  every job is private to you.
 - **Applications table** — sortable by company, role, status, location, or
   date applied; filterable by status; searchable by company/role/location.
 - **Detail panel** — salary, applied date, posting link, description, and a
@@ -19,31 +23,92 @@ stages, and keep notes as you work through the search.
 
 ## Data
 
-Jobs are stored in the browser's `localStorage` — there's no backend or
-account system. Data lives on one device/browser only.
+Jobs are stored in a SQLite database (`prisma/dev.db`) via Prisma — no
+third-party database or hosted service required. This means the app now
+needs a real Node server to run (API routes + Server Actions), so it can no
+longer be deployed as static files (e.g. GitHub Pages).
 
 ## Getting Started
 
-```bash
-npm install
-npm run dev
+1. Install dependencies (this also runs `prisma generate`):
+
+   ```bash
+   npm install
+   ```
+
+2. Apply the database migrations:
+
+   ```bash
+   npx prisma migrate dev
+   ```
+
+3. Set up Google sign-in — create an OAuth Client ID at
+   [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials):
+   - Application type: **Web application**
+   - Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+     (for production, add `https://<your-domain>/api/auth/callback/google` too)
+   - Copy the Client ID and Client Secret into `.env` (copy `.env.example` to
+     `.env` first) as `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`
+   - Generate a session secret with `openssl rand -base64 32` and set it as
+     `AUTH_SECRET` in `.env`
+
+4. Run the dev server:
+
+   ```bash
+   npm run dev
+   ```
+
+Open [http://localhost:3000](http://localhost:3000) and sign in with Google.
+
+## Environment
+
+See `.env.example`:
+
+```
+DATABASE_URL="file:./dev.db"
+AUTH_SECRET=""        # openssl rand -base64 32
+AUTH_GOOGLE_ID=""      # from Google Cloud Console
+AUTH_GOOGLE_SECRET=""
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Deploying
+
+This needs a host that runs a persistent Node server with a writable disk
+(for the SQLite file) — not a static host or a serverless platform with an
+ephemeral filesystem. Whatever you choose, remember to:
+
+- Set `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` on
+  the host
+- Add the production callback URL
+  (`https://<your-domain>/api/auth/callback/google`) to the Google OAuth
+  client's authorized redirect URIs
+- Run `npx prisma migrate deploy` against the production database before
+  first start
 
 ## Tech Stack
 
 - [Next.js](https://nextjs.org) (App Router) + React 19
 - [Tailwind CSS](https://tailwindcss.com) v4
+- [Auth.js](https://authjs.dev) (NextAuth v5) with the Google provider
+- [Prisma](https://www.prisma.io) + SQLite (`@prisma/adapter-better-sqlite3`)
 - TypeScript
 
 ## Project structure
 
-- `src/app/page.tsx` — top-level state (selection, filter, sort, layout, form)
+- `src/app/page.tsx` — Server Component: checks the session, fetches the
+  signed-in user's jobs, and renders the sign-in screen or the app
+- `src/components/JobTrackerApp.tsx` — client-side UI state (selection,
+  filter, sort, layout, form)
 - `src/components/` — `AppHeader`, `FilterBar`, `ApplicationsTable`,
-  `JobDetailPanel`, `JobMap`, `JobFormModal`
-- `src/hooks/useJobs.ts` — job CRUD, `localStorage` persistence, geocoding
-- `src/lib/` — types, status styling, seed data, date formatting
+  `JobDetailPanel`, `JobMap`, `JobFormModal`, `SignInScreen`
+- `src/hooks/useJobs.ts` — client-side job state, calling the Server Actions
+  below and debouncing notes saves
+- `src/lib/actions/jobs.ts` — Server Actions for job CRUD, each scoped to
+  the signed-in user; `src/lib/actions/auth.ts` — sign-out action
+- `src/auth.ts` — Auth.js config (Google provider, JWT session, upserts a
+  `User` row on first sign-in)
+- `prisma/schema.prisma` — `User` and `Job` models
+- `src/lib/` — types, status styling, date formatting
 
 ## Using Claude Code
 
@@ -56,7 +121,6 @@ This project is set up to work with [Claude Code](https://claude.com/claude-code
   if it shows up as a diff, just commit it along with your other changes.
 
 `legacy-archive/` holds a snapshot of a previous, more complex version of
-this app (Next.js + Prisma/SQLite, accounts, Google OAuth, dashboard
-analytics, LinkedIn auto-fill) kept for reference while features are
-reincorporated into this simpler rebuild. It's gitignored and not part of
-the published app.
+this app (accounts, Google OAuth, dashboard analytics, LinkedIn auto-fill)
+kept for reference while features are reincorporated into this rebuild. It's
+gitignored and not part of the published app.

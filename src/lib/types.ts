@@ -11,7 +11,7 @@ export type Status =
   | "Ghosted";
 
 export interface Job {
-  id: number;
+  id: string;
   company: string;
   role: string;
   location: string;
