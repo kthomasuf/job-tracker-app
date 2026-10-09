@@ -93,6 +93,15 @@ export function useJobs() {
     [updateJob, geocode],
   );
 
+  const importJobs = useCallback((imported: Omit<Job, "id">[]) => {
+    setJobs((prev) => {
+      const newJobs = imported.map((job, i) => ({ ...job, id: Date.now() + i }));
+      const next = [...newJobs, ...prev];
+      persist(next);
+      return next;
+    });
+  }, []);
+
   const removeJob = useCallback((id: number) => {
     setJobs((prev) => {
       const next = prev.filter((j) => j.id !== id);
@@ -116,5 +125,5 @@ export function useJobs() {
     [updateJob],
   );
 
-  return { jobs, loaded, addJob, editJob, removeJob, setStatus, setNotes };
+  return { jobs, loaded, addJob, editJob, removeJob, importJobs, setStatus, setNotes };
 }

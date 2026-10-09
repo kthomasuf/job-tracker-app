@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { Layout } from "@/lib/types";
 
 const LAYOUTS: Layout[] = ["Split", "Stacked", "Drawer"];
@@ -9,9 +10,26 @@ interface AppHeaderProps {
   layout: Layout;
   onLayoutChange: (layout: Layout) => void;
   onAddClick: () => void;
+  onExport: () => void;
+  onImportFile: (file: File) => void;
 }
 
-export function AppHeader({ total, layout, onLayoutChange, onAddClick }: AppHeaderProps) {
+export function AppHeader({
+  total,
+  layout,
+  onLayoutChange,
+  onAddClick,
+  onExport,
+  onImportFile,
+}: AppHeaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) onImportFile(file);
+    e.target.value = "";
+  };
+
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-6 py-4">
       <div className="flex items-baseline gap-3">
@@ -34,6 +52,29 @@ export function AppHeader({ total, layout, onLayoutChange, onAddClick }: AppHead
               {l}
             </button>
           ))}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="cursor-pointer rounded-md border border-[var(--border-strong)] bg-white px-3 py-2 text-sm hover:bg-[#f1efea]"
+          >
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={onExport}
+            className="cursor-pointer rounded-md border border-[var(--border-strong)] bg-white px-3 py-2 text-sm hover:bg-[#f1efea]"
+          >
+            Export
+          </button>
         </div>
         <button
           type="button"

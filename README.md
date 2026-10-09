@@ -16,11 +16,23 @@ stages, and keep notes as you work through the search.
   salary, posting link, and description.
 - **Three layouts** — Split (table + detail side by side), Stacked (detail
   below the table), and Drawer (detail slides over the table).
+- **Import/Export (CSV)** — export all jobs to a spreadsheet-compatible CSV
+  file, or import one to add jobs in bulk. Since there's no account system,
+  this doubles as the way to back up your data or move it to another
+  browser/device.
 
 ## Data
 
 Jobs are stored in the browser's `localStorage` — there's no backend or
-account system. Data lives on one device/browser only.
+account system, so data lives on one device/browser only. Use Export/Import
+(CSV) to carry your data elsewhere or keep a backup.
+
+Imported rows need at least a Company or Role to be kept (blank/empty rows
+are skipped); unrecognized Status or Work Mode values fall back to "Applied"
+and "On-site". Importing always adds to your existing jobs rather than
+replacing them. If a row includes Latitude/Longitude (as exported), those are
+reused directly; otherwise the job just won't show a map pin until you edit
+it (which re-geocodes its location).
 
 ## Getting Started
 
@@ -43,6 +55,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `src/components/` — `AppHeader`, `FilterBar`, `ApplicationsTable`,
   `JobDetailPanel`, `JobMap`, `JobFormModal`
 - `src/hooks/useJobs.ts` — job CRUD, `localStorage` persistence, geocoding
+- `src/lib/csv.ts` — CSV export/import (via `papaparse`)
 - `src/lib/` — types, status styling, seed data, date formatting
 
 ## Using Claude Code

@@ -10,10 +10,11 @@ import { JobFormModal } from "@/components/JobFormModal";
 import { STATUS_NAMES } from "@/lib/statuses";
 import { BLANK_FORM } from "@/lib/seed-data";
 import { today } from "@/lib/format";
+import { jobsToCsv, csvToJobs } from "@/lib/csv";
 import type { JobFormData, Layout, SortKey, Status } from "@/lib/types";
 
 export default function Home() {
-  const { jobs, loaded, addJob, editJob, removeJob, setStatus, setNotes } = useJobs();
+  const { jobs, loaded, addJob, editJob, removeJob, importJobs, setStatus, setNotes } = useJobs();
 
   const [selId, setSelId] = useState<number | null>(1);
   const [filter, setFilter] = useState<"All" | Status>("All");
@@ -85,6 +86,25 @@ export default function Home() {
     setFormOpen(false);
   };
 
+  const handleExport = () => {
+    const blob = new Blob([jobsToCsv(jobs)], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `job-tracker-export-${today()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = async (file: File) => {
+    const text = await file.text();
+    const { jobs: imported, skipped } = csvToJobs(text);
+    if (imported.length) importJobs(imported);
+    const parts = [`Imported ${imported.length} job${imported.length === 1 ? "" : "s"}.`];
+    if (skipped) parts.push(`Skipped ${skipped} row${skipped === 1 ? "" : "s"} missing company/role.`);
+    alert(parts.join(" "));
+  };
+
   const handleDelete = () => {
     if (!sel) return;
     if (!confirm(`Delete ${sel.company}?`)) return;
@@ -112,7 +132,14 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <AppHeader total={jobs.length} layout={layout} onLayoutChange={setLayout} onAddClick={openAdd} />
+      <AppHeader
+        total={jobs.length}
+        layout={layout}
+        onLayoutChange={setLayout}
+        onAddClick={openAdd}
+        onExport={handleExport}
+        onImportFile={handleImportFile}
+      />
       <FilterBar jobs={jobs} filter={filter} onFilterChange={setFilter} query={query} onQueryChange={setQuery} />
 
       <main className={`relative grid flex-1 items-start ${mainColsClass}`}>
